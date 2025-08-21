@@ -245,10 +245,25 @@
             padding: 40px 20px;
         }
         
-        .empty-history i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            opacity: 0.3;
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1dd1a1;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
         
         @media (max-width: 480px) {
@@ -310,25 +325,24 @@
         
         <div class="tab-content" id="history-tab" style="display: none;">
             <div class="history-container" id="history-container">
-                <div class="empty-history" id="empty-history">
-                    <div>📝</div>
-                    <p>No mood entries yet. Start by adding your first entry!</p>
-                </div>
+                <div class="loading" id="loading">Loading mood history...</div>
                 <!-- History items will be added here dynamically -->
             </div>
         </div>
     </div>
+
+    <div class="notification" id="notification"></div>
 
     <script>
         class MoodMeter {
             constructor() {
                 this.moods = ['Depressed', 'Sad', 'Neutral', 'Okay', 'Happy'];
                 this.colors = ['#ff6b6b', '#ff9ff3', '#feca57', '#48dbfb', '#1dd1a1'];
-                this.history = JSON.parse(localStorage.getItem('moodHistory')) || [];
+                this.history = [];
+                this.backendUrl = 'https://jsonplaceholder.typicode.com/posts'; // Mock API endpoint
                 this.initializeElements();
                 this.addEventListeners();
                 this.updateSliderFill();
-                this.loadHistory();
             }
             
             initializeElements() {
@@ -338,7 +352,8 @@
                 this.messageInput = document.getElementById('message-input');
                 this.submitBtn = document.getElementById('submit-btn');
                 this.historyContainer = document.getElementById('history-container');
-                this.emptyHistory = document.getElementById('empty-history');
+                this.loadingElement = document.getElementById('loading');
+                this.notification = document.getElementById('notification');
                 this.tabs = document.querySelectorAll('.tab');
                 this.tabContents = {
                     'meter': document.getElementById('meter-tab'),
@@ -382,46 +397,91 @@
                 this.currentMood.style.color = this.colors[moodIndex];
             }
             
-            saveMoodEntry() {
+            async saveMoodEntry() {
                 const moodIndex = parseInt(this.slider.value);
                 const message = this.messageInput.value.trim();
                 
                 if (!message) {
-                    alert('Please enter your thoughts before saving.');
+                    this.showNotification('Please enter your thoughts before saving.', '#ff6b6b');
                     return;
                 }
                 
                 const entry = {
-                    id: Date.now(),
-                    mood: this.moods[moodIndex],
+                    userId: 1,
+                    title: this.moods[moodIndex],
+                    body: message,
                     moodIndex: moodIndex,
-                    message: message,
                     timestamp: new Date().toISOString()
                 };
                 
-                this.history.unshift(entry);
-                localStorage.setItem('moodHistory', JSON.stringify(this.history));
-                
-                this.messageInput.value = '';
-                this.showNotification('Mood entry saved successfully!');
-                this.loadHistory();
+                try {
+                    // Send to backend
+                    const response = await fetch(this.backendUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(entry)
+                    });
+                    
+                    if (response.ok) {
+                        this.messageInput.value = '';
+                        this.showNotification('Mood entry saved successfully!');
+                        // Refresh history to show new entry
+                        if (this.tabs[1].classList.contains('active')) {
+                            this.loadHistory();
+                        }
+                    } else {
+                        throw new Error('Failed to save');
+                    }
+                } catch (error) {
+                    this.showNotification('Failed to save entry. Please try again.', '#ff6b6b');
+                }
             }
             
-            loadHistory() {
-                if (this.history.length === 0) {
-                    this.emptyHistory.style.display = 'block';
-                    this.historyContainer.innerHTML = '';
-                    this.historyContainer.appendChild(this.emptyHistory);
-                    return;
-                }
-                
-                this.emptyHistory.style.display = 'none';
+            async loadHistory() {
+                this.loadingElement.style.display = 'block';
                 this.historyContainer.innerHTML = '';
+                this.historyContainer.appendChild(this.loadingElement);
                 
-                this.history.forEach(entry => {
-                    const historyItem = this.createHistoryItem(entry);
-                    this.historyContainer.appendChild(historyItem);
-                });
+                try {
+                    // Fetch from backend
+                    const response = await fetch(this.backendUrl);
+                    const data = await response.json();
+                    
+                    // Filter and format mood entries (using mock data structure)
+                    this.history = data
+                        .filter(post => post.userId === 1)
+                        .map(post => ({
+                            id: post.id,
+                            mood: post.title,
+                            moodIndex: this.getMoodIndex(post.title),
+                            message: post.body,
+                            timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
+                        }))
+                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    this.loadingElement.style.display = 'none';
+                    
+                    if (this.history.length === 0) {
+                        this.showEmptyHistory();
+                        return;
+                    }
+                    
+                    this.history.forEach(entry => {
+                        const historyItem = this.createHistoryItem(entry);
+                        this.historyContainer.appendChild(historyItem);
+                    });
+                } catch (error) {
+                    this.loadingElement.style.display = 'none';
+                    this.showNotification('Failed to load history.', '#ff6b6b');
+                    this.showEmptyHistory();
+                }
+            }
+            
+            getMoodIndex(mood) {
+                const index = this.moods.indexOf(mood);
+                return index !== -1 ? index : 2; // Default to Neutral if not found
             }
             
             createHistoryItem(entry) {
@@ -431,15 +491,28 @@
                 const date = new Date(entry.timestamp);
                 const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 
+                // Map mood to appropriate class
+                const moodClass = entry.mood.toLowerCase().replace(' ', '-');
+                
                 item.innerHTML = `
                     <div class="history-header">
-                        <span class="mood-badge mood-${entry.mood.toLowerCase()}">${entry.mood}</span>
+                        <span class="mood-badge mood-${moodClass}">${entry.mood}</span>
                         <span class="history-date">${formattedDate}</span>
                     </div>
                     <div class="history-message">${entry.message}</div>
                 `;
                 
                 return item;
+            }
+            
+            showEmptyHistory() {
+                const emptyHistory = document.createElement('div');
+                emptyHistory.className = 'empty-history';
+                emptyHistory.innerHTML = `
+                    <div>📝</div>
+                    <p>No mood entries yet. Start by adding your first entry!</p>
+                `;
+                this.historyContainer.appendChild(emptyHistory);
             }
             
             switchTab(tabName) {
@@ -466,36 +539,13 @@
                 }
             }
             
-            showNotification(message) {
-                // Create notification element
-                const notification = document.createElement('div');
-                notification.style.position = 'fixed';
-                notification.style.bottom = '20px';
-                notification.style.left = '50%';
-                notification.style.transform = 'translateX(-50%)';
-                notification.style.backgroundColor = '#1dd1a1';
-                notification.style.color = 'white';
-                notification.style.padding = '12px 24px';
-                notification.style.borderRadius = '8px';
-                notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                notification.style.zIndex = '1000';
-                notification.style.opacity = '0';
-                notification.style.transition = 'opacity 0.3s ease';
-                notification.textContent = message;
+            showNotification(message, bgColor = '#1dd1a1') {
+                this.notification.textContent = message;
+                this.notification.style.background = bgColor;
+                this.notification.style.opacity = '1';
                 
-                document.body.appendChild(notification);
-                
-                // Fade in
                 setTimeout(() => {
-                    notification.style.opacity = '1';
-                }, 100);
-                
-                // Remove after 3 seconds
-                setTimeout(() => {
-                    notification.style.opacity = '0';
-                    setTimeout(() => {
-                        document.body.removeChild(notification);
-                    }, 300);
+                    this.notification.style.opacity = '0';
                 }, 3000);
             }
         }
