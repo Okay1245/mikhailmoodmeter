@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Meter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+        
+        .mood-meter {
+            padding: 30px;
+        }
+        
+        .mood-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .slider-container {
+            position: relative;
+            height: 60px;
+            margin-bottom: 30px;
+        }
+        
+        .slider-track {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            transform: translateY(-50%);
+        }
+        
+        .slider-fill {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #1dd1a1, #54a0ff);
+            border-radius: 3px;
+            transform: translateY(-50%);
+            transition: width 0.3s ease;
+        }
+        
+        .slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 60px;
+            background: transparent;
+            outline: none;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .current-mood {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 25px;
+            min-height: 1.5rem;
+        }
+        
+        .message-input {
+            margin-bottom: 25px;
+        }
+        
+        .message-input textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            resize: vertical;
+            min-height: 100px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .message-input textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .history-container {
+            padding: 25px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .mood-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .mood-depressed { background: #ff6b6b; color: white; }
+        .mood-sad { background: #ff9ff3; color: white; }
+        .mood-neutral { background: #feca57; color: white; }
+        .mood-okay { background: #48dbfb; color: white; }
+        .mood-happy { background: #1dd1a1; color: white; }
+        
+        .history-date {
+            color: #999;
+            font-size: 0.8rem;
+        }
+        
+        .history-message {
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .empty-history {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+        }
+        
+        .empty-history i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.7rem;
+            }
+            
+            .mood-meter {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Mood Meter</h1>
+            <p>Track your emotions and thoughts</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="meter">Mood Meter</div>
+            <div class="tab" data-tab="history">History</div>
+        </div>
+        
+        <div class="tab-content" id="meter-tab">
+            <div class="mood-meter">
+                <div class="mood-labels">
+                    <span>Depressed</span>
+                    <span>Sad</span>
+                    <span>Neutral</span>
+                    <span>Okay</span>
+                    <span>Happy</span>
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-fill" id="slider-fill"></div>
+                    <input type="range" min="0" max="4" value="2" class="slider" id="mood-slider">
+                </div>
+                
+                <div class="current-mood" id="current-mood">Neutral</div>
+                
+                <div class="message-input">
+                    <textarea id="message-input" placeholder="How are you feeling today? Share your thoughts..."></textarea>
+                </div>
+                
+                <button class="submit-btn" id="submit-btn">Save Mood Entry</button>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="history-tab" style="display: none;">
+            <div class="history-container" id="history-container">
+                <div class="empty-history" id="empty-history">
+                    <div>📝</div>
+                    <p>No mood entries yet. Start by adding your first entry!</p>
+                </div>
+                <!-- History items will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MoodMeter {
+            constructor() {
+                this.moods = ['Depressed', 'Sad', 'Neutral', 'Okay', 'Happy'];
+                this.colors = ['#ff6b6b', '#ff9ff3', '#feca57', '#48dbfb', '#1dd1a1'];
+                this.history = JSON.parse(localStorage.getItem('moodHistory')) || [];
+                this.initializeElements();
+                this.addEventListeners();
+                this.updateSliderFill();
+                this.loadHistory();
+            }
+            
+            initializeElements() {
+                this.slider = document.getElementById('mood-slider');
+                this.sliderFill = document.getElementById('slider-fill');
+                this.currentMood = document.getElementById('current-mood');
+                this.messageInput = document.getElementById('message-input');
+                this.submitBtn = document.getElementById('submit-btn');
+                this.historyContainer = document.getElementById('history-container');
+                this.emptyHistory = document.getElementById('empty-history');
+                this.tabs = document.querySelectorAll('.tab');
+                this.tabContents = {
+                    'meter': document.getElementById('meter-tab'),
+                    'history': document.getElementById('history-tab')
+                };
+            }
+            
+            addEventListeners() {
+                this.slider.addEventListener('input', () => {
+                    this.updateSliderFill();
+                    this.updateCurrentMood();
+                });
+                
+                this.submitBtn.addEventListener('click', () => {
+                    this.saveMoodEntry();
+                });
+                
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.saveMoodEntry();
+                    }
+                });
+                
+                this.tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        this.switchTab(tab.getAttribute('data-tab'));
+                    });
+                });
+            }
+            
+            updateSliderFill() {
+                const value = this.slider.value;
+                const percentage = (value / 4) * 100;
+                this.sliderFill.style.width = `${percentage}%`;
+            }
+            
+            updateCurrentMood() {
+                const moodIndex = parseInt(this.slider.value);
+                this.currentMood.textContent = this.moods[moodIndex];
+                this.currentMood.style.color = this.colors[moodIndex];
+            }
+            
+            saveMoodEntry() {
+                const moodIndex = parseInt(this.slider.value);
+                const message = this.messageInput.value.trim();
+                
+                if (!message) {
+                    alert('Please enter your thoughts before saving.');
+                    return;
+                }
+                
+                const entry = {
+                    id: Date.now(),
+                    mood: this.moods[moodIndex],
+                    moodIndex: moodIndex,
+                    message: message,
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.history.unshift(entry);
+                localStorage.setItem('moodHistory', JSON.stringify(this.history));
+                
+                this.messageInput.value = '';
+                this.showNotification('Mood entry saved successfully!');
+                this.loadHistory();
+            }
+            
+            loadHistory() {
+                if (this.history.length === 0) {
+                    this.emptyHistory.style.display = 'block';
+                    this.historyContainer.innerHTML = '';
+                    this.historyContainer.appendChild(this.emptyHistory);
+                    return;
+                }
+                
+                this.emptyHistory.style.display = 'none';
+                this.historyContainer.innerHTML = '';
+                
+                this.history.forEach(entry => {
+                    const historyItem = this.createHistoryItem(entry);
+                    this.historyContainer.appendChild(historyItem);
+                });
+            }
+            
+            createHistoryItem(entry) {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                
+                const date = new Date(entry.timestamp);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                item.innerHTML = `
+                    <div class="history-header">
+                        <span class="mood-badge mood-${entry.mood.toLowerCase()}">${entry.mood}</span>
+                        <span class="history-date">${formattedDate}</span>
+                    </div>
+                    <div class="history-message">${entry.message}</div>
+                `;
+                
+                return item;
+            }
+            
+            switchTab(tabName) {
+                // Update tab buttons
+                this.tabs.forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.getAttribute('data-tab') === tabName) {
+                        tab.classList.add('active');
+                    }
+                });
+                
+                // Show/hide content
+                Object.keys(this.tabContents).forEach(key => {
+                    if (key === tabName) {
+                        this.tabContents[key].style.display = 'block';
+                    } else {
+                        this.tabContents[key].style.display = 'none';
+                    }
+                });
+                
+                // Load history when switching to history tab
+                if (tabName === 'history') {
+                    this.loadHistory();
+                }
+            }
+            
+            showNotification(message) {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.style.position = 'fixed';
+                notification.style.bottom = '20px';
+                notification.style.left = '50%';
+                notification.style.transform = 'translateX(-50%)';
+                notification.style.backgroundColor = '#1dd1a1';
+                notification.style.color = 'white';
+                notification.style.padding = '12px 24px';
+                notification.style.borderRadius = '8px';
+                notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                notification.style.zIndex = '1000';
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s ease';
+                notification.textContent = message;
+                
+                document.body.appendChild(notification);
+                
+                // Fade in
+                setTimeout(() => {
+                    notification.style.opacity = '1';
+                }, 100);
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+            }
+        }
+        
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new MoodMeter();
+        });
+    </script>
+</body>
+</html>
